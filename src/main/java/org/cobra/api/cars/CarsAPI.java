@@ -4,6 +4,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.resource.ResourceType;
 import org.cobra.api.cars.data.CarDataLoader;
+import org.cobra.api.cars.item.ModItems;
 import org.cobra.api.cars.screen.ModScreenHandlerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ public class CarsAPI implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+        ModItems.register();
 		ModScreenHandlerType.register();
 		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(new CarDataLoader());
 	}

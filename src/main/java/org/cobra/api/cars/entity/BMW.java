@@ -19,7 +19,7 @@ public class BMW extends CarEntity<Long, GasStorage> implements GeoAnimatable {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public BMW(EntityType<? extends CarEntity> entityType, World world) {
-        super(entityType, world);
+        super(entityType, world, 1);
         this.carType = CarType.SPORTS;
     }
 

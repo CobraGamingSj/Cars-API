@@ -11,6 +11,7 @@ import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.NamedScreenHandlerFactory;
@@ -26,6 +27,7 @@ import net.minecraft.world.World;
 import org.cobra.api.cars.CarsAPI;
 import org.cobra.api.cars.data.CarDataLoader;
 import org.cobra.api.cars.data.CarDefinition;
+import org.cobra.api.cars.item.CarKeyItem;
 import org.cobra.api.cars.screen.CarScreenHandler;
 import org.cobra.api.cars.storage.CarFuelStorage;
 import org.cobra.api.cars.util.Car;
@@ -34,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> extends Entity implements Car<T>, NamedScreenHandlerFactory {
+    public boolean isLocked = true;
+    public final int carId;
     private static final Logger LOGGER = LoggerFactory.getLogger(CarsAPI.MOD_ID);
     protected T distance;
     public S fuelStorage;
@@ -45,9 +49,18 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
 
     private static final DefaultedList<ItemStack> main = DefaultedList.ofSize(2, ItemStack.EMPTY);
 
-    public CarEntity(EntityType<?> entityType, World world) {
+    public CarEntity(EntityType<?> entityType, World world, int carId) {
         super(entityType, world);
+        this.carId = carId;
         this.fuelStorage = createFuelStorage();
+    }
+
+    public int getCarID() {
+        return this.carId;
+    }
+
+    public boolean isLocked() {
+        return isLocked;
     }
 
     @Override
@@ -126,12 +139,29 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
                 return ActionResult.PASS;
             }
 
+            ItemStack held = player.getStackInHand(hand);
+            if(held.getItem() instanceof CarKeyItem key && key.getCar() == this) {
+                if(this.isLocked) {
+                    this.isLocked = false;
+                    player.sendMessage(Text.of("Car unlocked!"), false);
+                    return ActionResult.SUCCESS;
+                } else if(player.isSneaking()) {
+                    this.isLocked = true;
+                }
+            }
+
             if (player.isSneaking()) {
+                System.out.println("Opening screen...");
                 // Open screen
                 player.openHandledScreen(this); // Make sure CarEntity implements `NamedScreenHandlerFactory`
-            } else if(!hasPassenger(player)) {
+                System.out.println("Opened CarScreen");
+                return ActionResult.SUCCESS;
+            } else if(!this.isLocked() && !hasPassenger(player)) {
+                System.out.println("Player mounted!");
                 // Mount the player
                 player.startRiding(this);
+                System.out.println("Player mounted");
+                return ActionResult.SUCCESS;
             }
         }
         return ActionResult.SUCCESS;
@@ -179,7 +209,7 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
     public void setFuelAmount(T fuelAmount) {
          if(this.fuelTank != null) {
              this.getFuelStorage().setFuelAmount(fuelAmount);
-            this.getDataTracker().set(FUEL_AMOUNT, fuelAmount.floatValue());
+             this.getDataTracker().set(FUEL_AMOUNT, fuelAmount.floatValue());
         }
     }
 
@@ -252,5 +282,11 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
     @Override
     public @Nullable LivingEntity getControllingPassenger() {
         return (LivingEntity) this.getFirstPassenger() instanceof PlayerEntity playerEntity ? playerEntity : super.getControllingPassenger();
+    }
+
+    public void unlock() {
+        if(!isLocked) {
+            this.isLocked = false;
+        }
     }
 }

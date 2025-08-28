@@ -1,6 +1,7 @@
 package org.cobra.api.cars.storage;
 
 import com.mojang.serialization.Codec;
+import net.minecraft.util.StringIdentifiable;
 
 public abstract class CarFuelStorage<T extends Number> {
 
@@ -58,7 +59,7 @@ public abstract class CarFuelStorage<T extends Number> {
             return fuelAmount;
         }
 
-        public enum FuelType {
+        public enum FuelType implements StringIdentifiable {
             PETROL,
             ELECTRIC,
             HYDROGEN;
@@ -67,6 +68,11 @@ public abstract class CarFuelStorage<T extends Number> {
                     FuelType::valueOf,
                     FuelType::name
             );
+
+            @Override
+            public String asString() {
+                return this.name();
+            }
         }
     }
 }
