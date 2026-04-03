@@ -1,40 +1,61 @@
 package org.cobra.api.cars.item;
 
-import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
+import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import org.cobra.api.cars.component.CarsAPIDataComponentTypes;
 import org.cobra.api.cars.entity.CarEntity;
 
+import java.util.List;
+
 public class CarKeyItem extends Item {
-    private final CarEntity<?, ?> car;
-    private final int carId;
+    private final int keyId;
+    private final EntityType<? extends CarEntity> car;
 
-    public CarKeyItem(Settings settings, CarEntity<?, ?> car, int carId) {
+    public CarKeyItem(Settings settings, int keyId, EntityType<? extends CarEntity> car) {
         super(settings);
+        this.keyId = keyId;
         this.car = car;
-        this.carId = car.getCarID();
     }
 
-    public int getCarId() {
-        return carId;
+    public int getKeyId() {
+        return keyId;
     }
+
+//    @Override
+//    public ActionResult useOnBlock(ItemUsageContext context) {
+//        World world = context.getWorld();
+//        if(!(world instanceof ServerWorld serverWorld)) {
+//            return ActionResult.SUCCESS;  // or PASS on client
+//        }
+//
+//        CarEntity car = this.car.create(world, SpawnReason.NATURAL);
+//        if(car == null) return ActionResult.FAIL;
+//
+//        car.setPosition(context.getBlockPos().toCenterPos());
+//        serverWorld.spawnEntity(car);
+//
+//        return ActionResult.SUCCESS;
+//    }
 
     @Override
     public ActionResult useOnEntity(ItemStack stack, PlayerEntity user, LivingEntity entity, Hand hand) {
-        if(!entity.getWorld().isClient && (Entity) entity instanceof CarEntity<?,?> car) {
-                if(car.isLocked()){
-                    car.unlock();
-                    return ActionResult.SUCCESS;
-                }
-            }
-        return ActionResult.PASS;
+        stack.set(CarsAPIDataComponentTypes.CAR_KEY_ID, keyId);
+        return super.useOnEntity(stack, user, entity, hand);
     }
 
-    public CarEntity<?, ?> getCar() {
-        return car;
+    @Override
+    public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+        if(stack.get(CarsAPIDataComponentTypes.CAR_KEY_ID) != null) {
+            tooltip.add(Text.literal("Car Key ID: " + CarsAPIDataComponentTypes.CAR_KEY_ID));
+        }
+        super.appendTooltip(stack, context, tooltip, type);
     }
+
 }

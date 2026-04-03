@@ -1,6 +1,12 @@
 {
-  "carType": "SPORTS",
-  "fuelCapacity": 60.0,
-  "fuelType": "HYDROGEN",
-  "model": "audi_r8"
+  "car": {
+    "type": "SPORTS",
+    "engineType": "V8",
+    "keyId": 0,
+    "model": "audi_r8"
+  },
+  "fuel": {
+    "type": "HYDROGEN",
+    "capacity": 60.0
+  }
 }

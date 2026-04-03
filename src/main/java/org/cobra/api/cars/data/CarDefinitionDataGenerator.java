@@ -48,7 +48,7 @@ public abstract class CarDefinitionDataGenerator {
 
     protected abstract CarDefinitionDataGenerator generateCarDefinition(RegistryWrapper.WrapperLookup registries, BiConsumer<Identifier, CarDefinition> exporter);
 
-    public static void registerCarDefinition(EntityType<? extends CarEntity<? extends Number, ? extends CarFuelStorage<? extends Number>>> entity, CarDefinition definition, BiConsumer<Identifier, CarDefinition> exporter) {
+    public static void registerCarDefinition(EntityType<? extends CarEntity> entity, CarDefinition definition, BiConsumer<Identifier, CarDefinition> exporter) {
         Identifier id = Registries.ENTITY_TYPE.getId(entity);
         exporter.accept(id, definition);
     }

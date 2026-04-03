@@ -1,6 +1,15 @@
 {
-  "carType": "SPORTS",
-  "fuelCapacity": 5.0,
-  "fuelType": "PETROL",
-  "model": "bmw_m5"
+  "car": {
+    "type": "SPORTS",
+    "engineType": "V8",
+    "keyId": 1,
+    "model": "bmw_m5"
+  },
+  "fuel": {
+    "type": [
+      "PETROL",
+      "HYDROGEN"
+    ],
+    "capacity": 5.0
+  }
 }

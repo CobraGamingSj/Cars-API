@@ -3,47 +3,54 @@ package org.cobra.api.cars.storage;
 import com.mojang.serialization.Codec;
 import net.minecraft.util.StringIdentifiable;
 
-public abstract class CarFuelStorage<T extends Number> {
+public class CarFuelStorage {
 
-    protected T fuelAmount;
-    protected final T capacity;
+    protected float fuelAmount;
+    protected final float capacity;
 
-    protected CarFuelStorage(T capacity, T initialAmount) {
+    public CarFuelStorage(float capacity, float initialAmount) {
         this.capacity = capacity;
         this.fuelAmount = initialAmount;
     }
 
-    public T getFuelAmount() {
+    public float getFuelAmount() {
         return this.fuelAmount;
     }
 
-    public void setFuelAmount(T amount) {
+    public void setFuelAmount(float amount) {
         this.fuelAmount = amount;
     }
 
-    public T getCapacity() {
+    public float getCapacity() {
         return this.capacity;
     }
 
-    public abstract void insert(T maxAmount);
-    public abstract void extract(T maxAmount);
+    public void insert(float maxAmount) {
+        float amount = Math.min(this.capacity - this.fuelAmount, maxAmount);
+        this.fuelAmount += amount;
+    }
 
-    public static class FuelTank<T extends Number> {
+    public void extract(float maxAmount) {
+        float amount = Math.min(this.fuelAmount, maxAmount);
+        this.fuelAmount -= amount;
+    }
 
-        private T capacity;
-        private T fuelAmount;
+    public static class FuelTank {
+
+        private float capacity;
+        private float fuelAmount;
         private FuelType fuelType;
 
-        public FuelTank(T capacity, FuelType fuelType) {
+        public FuelTank(float capacity, FuelType fuelType) {
             this.capacity = capacity;
             this.fuelType = fuelType;
         }
 
-        public T getFuelCapacity() {
+        public float getFuelCapacity() {
             return capacity;
         }
 
-        public void setFuelCapacity(T capacity) {
+        public void setFuelCapacity(float capacity) {
             this.capacity = capacity;
         }
 
@@ -55,7 +62,7 @@ public abstract class CarFuelStorage<T extends Number> {
             this.fuelType = fuelType;
         }
 
-        public T getFuelAmount() {
+        public float getFuelAmount() {
             return fuelAmount;
         }
 

@@ -13,18 +13,18 @@ import org.cobra.api.cars.entity.ModEntities;
 import org.cobra.api.cars.storage.CarFuelStorage;
 
 public class CarScreenHandler extends ScreenHandler {
-    protected CarEntity<?, ?> carEntity;
+    protected CarEntity carEntity;
     private final Inventory inventory;
 
     public CarScreenHandler(int syncId , PlayerInventory playerInventory) {
         this(syncId, playerInventory, null);
     }
 
-    public CarScreenHandler(int syncId , PlayerInventory playerInventory, CarEntity<?, ?> entityType) {
+    public CarScreenHandler(int syncId , PlayerInventory playerInventory, CarEntity entityType) {
         super(ModScreenHandlerType.CAR, syncId);
         checkSize((Inventory) playerInventory, 2);
         this.inventory = (Inventory) playerInventory;
-        this.carEntity = (CarEntity<?, ?>) entityType;
+        this.carEntity = (CarEntity) entityType;
 
         addPlayerGenericInventory(playerInventory);
         addPlayerHotbarInventory(playerInventory);
@@ -32,7 +32,7 @@ public class CarScreenHandler extends ScreenHandler {
         this.addSlot(new Slot(inventory, 0, 77, 58));
     }
 
-    public CarEntity<?, ?> getCarEntity() {
+    public CarEntity getCarEntity() {
         return this.carEntity;
     }
 
@@ -61,7 +61,7 @@ public class CarScreenHandler extends ScreenHandler {
     }
 
     public Number getFuelPercentage() {
-        CarFuelStorage<?> storage = this.carEntity.getFuelStorage();
+        CarFuelStorage storage = this.carEntity.getFuelStorage();
         Number amount = storage.getFuelAmount();
         Number capacity = storage.getCapacity();
         return MathHelper.clamp((float) amount / (float) capacity, 0, 1);

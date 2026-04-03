@@ -18,7 +18,7 @@ import software.bernie.geckolib.object.Color;
 
 public class CarScreen extends HandledScreen<CarScreenHandler> {
     private static final Identifier TEXTURE = Identifier.of(CarsAPI.MOD_ID, "textures/gui/container/car.png");
-    private final CarEntity<?, ?> entity = handler.carEntity;
+    private final CarEntity entity = handler.carEntity;
 
     public CarScreen(CarScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);
@@ -34,7 +34,7 @@ public class CarScreen extends HandledScreen<CarScreenHandler> {
         context.fill(x + 10, y + 30 + 80 - fuelHandlerSize, x + 10 + 30, y + 30 + 80, -16777216);
     }
 
-    private void renderEntity(CarEntity<?, ?> carEntity, int x, int y, float scale, float mouseX, float mouseY) {
+    private void renderEntity(CarEntity carEntity, int x, int y, float scale, float mouseX, float mouseY) {
         MinecraftClient client = MinecraftClient.getInstance();
         EntityRenderDispatcher dispatcher = client.getEntityRenderDispatcher();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();

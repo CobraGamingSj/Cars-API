@@ -1,9 +1,7 @@
 package org.cobra.api.cars.entity;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.MovementType;
+import net.minecraft.block.BlockState;
+import net.minecraft.entity.*;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.damage.DamageTypes;
 import net.minecraft.entity.data.DataTracker;
@@ -11,9 +9,14 @@ import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.entity.vehicle.AbstractMinecartEntity;
+import net.minecraft.entity.vehicle.ExperimentalMinecartController;
+import net.minecraft.entity.vehicle.MinecartController;
+import net.minecraft.entity.vehicle.VehicleEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.world.ServerWorld;
@@ -22,6 +25,8 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.cobra.api.cars.CarsAPI;
@@ -35,28 +40,28 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> extends Entity implements Car<T>, NamedScreenHandlerFactory {
+import java.util.List;
+
+public abstract class CarEntity extends VehicleEntity implements Car, NamedScreenHandlerFactory {
     public boolean isLocked = true;
-    public final int carId;
+    public int keyId;
     private static final Logger LOGGER = LoggerFactory.getLogger(CarsAPI.MOD_ID);
-    protected T distance;
-    public S fuelStorage;
+    protected float distance;
+    public CarFuelStorage fuelStorage;
     protected boolean initialized = false;
-    protected CarFuelStorage.FuelTank<T> fuelTank;
+    protected CarFuelStorage.FuelTank fuelTank;
     protected CarType carType;
     protected String model;
-    private static final TrackedData<Float> FUEL_AMOUNT = DataTracker.registerData(CarEntity.class, TrackedDataHandlerRegistry.FLOAT);
+    protected EngineType engineType;
+    public static final TrackedData<Float> FUEL_AMOUNT = DataTracker.registerData(CarEntity.class, TrackedDataHandlerRegistry.FLOAT);
+    public static final TrackedData<Integer> KEY_ID = DataTracker.registerData(CarEntity.class, TrackedDataHandlerRegistry.INTEGER);
 
     private static final DefaultedList<ItemStack> main = DefaultedList.ofSize(2, ItemStack.EMPTY);
 
-    public CarEntity(EntityType<?> entityType, World world, int carId) {
+    public CarEntity(EntityType<? extends VehicleEntity> entityType, World world, int keyId) {
         super(entityType, world);
-        this.carId = carId;
+        this.keyId = keyId;
         this.fuelStorage = createFuelStorage();
-    }
-
-    public int getCarID() {
-        return this.carId;
     }
 
     public boolean isLocked() {
@@ -65,28 +70,31 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
 
     @Override
     protected void initDataTracker(DataTracker.Builder builder) {
+        super.initDataTracker(builder);
         builder.add(FUEL_AMOUNT, 0F);
+        builder.add(KEY_ID, 0);
     }
 
     public abstract String getModel();
     public abstract Identifier getCarId();
     public abstract CarType getCarType();
+    public abstract EngineType getEngineType();
 
-    protected abstract T getFuelCapacity();
+    protected abstract float getFuelCapacity();
 
-    public T getFuelAmount() {
+    public float getFuelAmount() {
         return this.getFuelStorage().getFuelAmount();
     }
 
-    public S getFuelStorage() {
+    public CarFuelStorage getFuelStorage() {
         return fuelStorage;
     }
 
-    public void refuel(T amount) {
+    public void refuel(float amount) {
         this.getFuelStorage().insert(amount);
     }
 
-    public void setFuelStorage(S fuelStorage) {
+    public void setFuelStorage(CarFuelStorage fuelStorage) {
         this.fuelStorage = fuelStorage;
     }
 
@@ -96,6 +104,19 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
 
     @Override
     protected void readCustomDataFromNbt(NbtCompound nbt) {
+        keyId = nbt.getInt("CarKeyID");
+        String engineTypeStr = nbt.getString("EngineType");
+        if(engineTypeStr != null && !engineTypeStr.isEmpty()) {
+            try {
+                engineType = EngineType.valueOf(engineTypeStr.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                CarsAPI.LOGGER.warn("Invalid EngineType: {} defaulting to V6", engineTypeStr);
+                engineType = EngineType.V6;
+            }
+        } else {
+            CarsAPI.LOGGER.warn("Missing EngineType, defaulting to V6");
+            engineType = EngineType.V6;
+        }
         float capacity = nbt.getFloat("FuelCapacity");
         float amount = nbt.getFloat("FuelAmount");
         String fuelTypeStr = nbt.getString("FuelType");
@@ -107,25 +128,26 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
             fuelType = CarFuelStorage.FuelTank.FuelType.PETROL;
         }
 
-        this.fuelTank = new CarFuelStorage.FuelTank<>(fromFloat(capacity), fuelType);
-        this.getFuelStorage().setFuelAmount(fromFloat(amount));
+        this.fuelTank = new CarFuelStorage.FuelTank(capacity, fuelType);
+        this.getFuelStorage().setFuelAmount(amount);
 
         if (nbt.contains("CarModel")) {
             model = nbt.getString("CarModel");
         }
     }
 
-    protected abstract T fromFloat(float amount);
-
     @Override
     protected void writeCustomDataToNbt(NbtCompound nbt) {
         if(fuelTank != null) {
-            nbt.putFloat("FuelCapacity", fuelStorage.getCapacity().floatValue());
-            nbt.putFloat("FuelAmount", fuelStorage.getFuelAmount().floatValue());
+            nbt.putFloat("FuelCapacity", fuelStorage.getCapacity());
+            nbt.putFloat("FuelAmount", fuelStorage.getFuelAmount());
             if (fuelTank.getFuelType() != null) {
                 nbt.putString("FuelType", fuelTank.getFuelType().name());
             }
         }
+
+        nbt.putInt("CarKeyID", keyId);
+        nbt.putString("EngineType", engineType.name());
 
         if (model != null) {
             nbt.putString("CarModel", model);
@@ -134,36 +156,39 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
 
     @Override
     public ActionResult interact(PlayerEntity player, Hand hand) {
-        if (!this.getWorld().isClient) {
-            if (player.shouldCancelInteraction()) {
-                return ActionResult.PASS;
-            }
+        if (player.shouldCancelInteraction()) {
+            CarsAPI.LOGGER.info("Cancelled interaction");
+            return ActionResult.PASS;
+        }
 
             ItemStack held = player.getStackInHand(hand);
-            if(held.getItem() instanceof CarKeyItem key && key.getCar() == this) {
-                if(this.isLocked) {
+            if (held.getItem() instanceof CarKeyItem key) {
+                if(key.getKeyId() != this.keyId) {
+                    CarsAPI.LOGGER.warn("Mismatched KeyID for car: {}", this.getCarId());
+                }
+                if (this.isLocked()) {
                     this.isLocked = false;
                     player.sendMessage(Text.of("Car unlocked!"), false);
                     return ActionResult.SUCCESS;
-                } else if(player.isSneaking()) {
+                } else if (player.isSneaking()) {
                     this.isLocked = true;
+                    CarsAPI.LOGGER.info("Opening screen...");
+                    // Open screen
+                    player.openHandledScreen(this);
+                    CarsAPI.LOGGER.info("Opened CarScreen");
+                    return ActionResult.SUCCESS;
                 }
             }
 
-            if (player.isSneaking()) {
-                System.out.println("Opening screen...");
-                // Open screen
-                player.openHandledScreen(this); // Make sure CarEntity implements `NamedScreenHandlerFactory`
-                System.out.println("Opened CarScreen");
-                return ActionResult.SUCCESS;
-            } else if(!this.isLocked() && !hasPassenger(player)) {
-                System.out.println("Player mounted!");
-                // Mount the player
-                player.startRiding(this);
-                System.out.println("Player mounted");
-                return ActionResult.SUCCESS;
+            if (!this.isLocked() && !hasPassenger(player) && (this.getWorld().isClient || player.startRiding(this))) {
+                if(!this.getWorld().isClient) {
+                    // Mount the player
+                    player.startRiding(this);
+                    CarsAPI.LOGGER.info("Player mounted");
+                    return ActionResult.SUCCESS;
+                }
             }
-        }
+        CarsAPI.LOGGER.info("interact client");
         return ActionResult.SUCCESS;
     }
 
@@ -198,7 +223,7 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
         }
     }
 
-    public CarFuelStorage.FuelTank<T> getFuelTank() {
+    public CarFuelStorage.FuelTank getFuelTank() {
         return fuelTank;
     }
 
@@ -206,11 +231,20 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
         return this.getDataTracker().get(FUEL_AMOUNT);
     }
 
-    public void setFuelAmount(T fuelAmount) {
+    public void setFuelAmount(float fuelAmount) {
          if(this.fuelTank != null) {
              this.getFuelStorage().setFuelAmount(fuelAmount);
-             this.getDataTracker().set(FUEL_AMOUNT, fuelAmount.floatValue());
+             this.getDataTracker().set(FUEL_AMOUNT, fuelAmount);
         }
+    }
+
+    public float getTrackedKeyId() {
+        return this.getDataTracker().get(KEY_ID);
+    }
+
+    public void setKeyId(int keyId) {
+       this.getDataTracker().set(KEY_ID, keyId);
+
     }
 
     @Override
@@ -220,32 +254,36 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
 
     protected void initialized() {
         CarDefinition def = CarDataLoader.CAR_DEFINITIONS.get(this.getCarId());
+        CarDefinition.CarInfo info = def.carInfo();
+        List<CarFuelStorage.FuelTank.FuelType> fuelTypes = def.fuelInfo().fuelType();
+        CarFuelStorage.FuelTank.FuelType primary = fuelTypes.isEmpty() ? CarFuelStorage.FuelTank.FuelType.PETROL : fuelTypes.get(0);
         if (def != null) {
-            this.fuelTank = new CarFuelStorage.FuelTank(def.fuelCapacity(), def.fuelType());
+            this.fuelTank = new CarFuelStorage.FuelTank(def.fuelInfo().fuelCapacity(), primary);
             this.fuelStorage = createFuelStorage();
-            this.carType = def.carType();
-            this.model = def.model();
+            this.carType = info.carType();
+            this.engineType = info.engineType();
+            this.model = info.model();
+            this.keyId = info.keyId();
+            this.dataTracker.set(KEY_ID, keyId);
 
-            if(!def.model().equals(this.getModel())) {
-                throw new IllegalStateException("Mismatched model in CarDefinition for Car ID " + this.getCarId() + " -> expected: " + this.getModel() + "," + " found: " + def.model());
+            if(!info.model().equals(this.getModel())) {
+                throw new IllegalStateException("Mismatched model in CarDefinition for Car ID " + this.getCarId() + " -> expected: " + this.getModel() + "," + " found: " + info.model());
             }
 
-            CarsAPI.LOGGER.info("[{}] Loaded CarDefinition -> Fuel: {}, FuelType: {}, Model: {}, CarType: {}",
-                    this.getCarId(), this.fuelTank.getFuelCapacity(), this.fuelTank.getFuelType(), this.getModel(), this.getCarType());
+            CarsAPI.LOGGER.info("[{}] Loaded CarDefinition -> Fuel: {}, FuelType: {}, Model: {}, CarType: {}, EngineTye: {}, CarKeyID: {}",
+                    this.getCarId(), this.fuelTank.getFuelCapacity(), this.fuelTank.getFuelType(), this.getModel(), this.getCarType(), this.getEngineType(), this.keyId);
 
         } else {
             CarsAPI.LOGGER.warn("Car config not found (ID: {})", this.getCarId());
         }
     }
 
-    public abstract S createFuelStorage();
+    public abstract CarFuelStorage createFuelStorage();
 
     @Override
     public void tick() {
-        super.tick();
-
         if(!initialized) {
-            if(!this.getWorld().isClient) {
+            if(this.getWorld().isClient) {
                 initialized();
                 initialized = true;
                 LOGGER.info("Car initialized on server");
@@ -260,13 +298,12 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
             return;
         }
 
-        if(this.getWorld().isClient) return;
 
         if(this.hasPassengers() && hasEnoughFuel()) {
             this.drive(distance);
             Vec3d forward = this.getRotationVector().multiply(0.1);
             this.move(MovementType.SELF, forward);
-            this.dataTracker.set(FUEL_AMOUNT, fuelTank.getFuelAmount().floatValue());
+            this.dataTracker.set(FUEL_AMOUNT, fuelTank.getFuelAmount());
         } else {
             this.setVelocity(this.getVelocity().multiply(0.85));
         }
@@ -275,18 +312,35 @@ public abstract class CarEntity<T extends Number, S extends CarFuelStorage<T>> e
         this.setVelocity(this.getVelocity().multiply(0.9));
     }
 
+    public void initPosition(double x, double y, double z) {
+        this.setPosition(x, y, z);
+        this.prevX = x;
+        this.prevY = y;
+        this.prevZ = z;
+    }
+
+
+
+//    @Nullable
+//    public static <T extends CarEntity> T create(World world, double x, double y, double z, EntityType<T> type, SpawnReason reason, ItemStack stack, @Nullable PlayerEntity player) {
+//        T carEntity = (T)(type.create(world, reason));
+//        if (carEntity != null) {
+//            carEntity.initPosition(x, y, z);
+//            EntityType.copier(world, stack, player).accept(carEntity);
+//                BlockPos blockPos = carEntity.getRailOrMinecartPos();
+//                BlockState blockState = world.getBlockState(blockPos);
+//
+//        }
+//
+//        return carEntity;
+//    }
+
     protected boolean hasEnoughFuel() {
-        return fuelTank != null && fuelTank.getFuelAmount() != null;
+        return fuelTank != null && fuelTank.getFuelAmount() != 0;
     }
 
     @Override
     public @Nullable LivingEntity getControllingPassenger() {
         return (LivingEntity) this.getFirstPassenger() instanceof PlayerEntity playerEntity ? playerEntity : super.getControllingPassenger();
-    }
-
-    public void unlock() {
-        if(!isLocked) {
-            this.isLocked = false;
-        }
     }
 }
