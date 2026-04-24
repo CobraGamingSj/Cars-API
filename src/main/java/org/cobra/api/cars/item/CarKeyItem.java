@@ -1,5 +1,6 @@
 package org.cobra.api.cars.item;
 
+import net.minecraft.component.type.TooltipDisplayComponent;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -13,6 +14,7 @@ import org.cobra.api.cars.component.CarsAPIDataComponentTypes;
 import org.cobra.api.cars.entity.CarEntity;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public class CarKeyItem extends Item {
     private final int keyId;
@@ -51,11 +53,11 @@ public class CarKeyItem extends Item {
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
+    public void appendTooltip(ItemStack stack, TooltipContext context, TooltipDisplayComponent displayComponent, Consumer<Text> textConsumer, TooltipType type) {
         if(stack.get(CarsAPIDataComponentTypes.CAR_KEY_ID) != null) {
-            tooltip.add(Text.literal("Car Key ID: " + CarsAPIDataComponentTypes.CAR_KEY_ID));
+            textConsumer.accept(Text.literal("Car Key ID: " + CarsAPIDataComponentTypes.CAR_KEY_ID));
         }
-        super.appendTooltip(stack, context, tooltip, type);
+        super.appendTooltip(stack, context, displayComponent, textConsumer, type);
     }
 
 }

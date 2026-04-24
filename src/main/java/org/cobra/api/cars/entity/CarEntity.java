@@ -9,14 +9,9 @@ import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.vehicle.AbstractMinecartEntity;
-import net.minecraft.entity.vehicle.ExperimentalMinecartController;
-import net.minecraft.entity.vehicle.MinecartController;
 import net.minecraft.entity.vehicle.VehicleEntity;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.world.ServerWorld;
@@ -26,7 +21,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.cobra.api.cars.CarsAPI;
@@ -104,8 +98,8 @@ public abstract class CarEntity extends VehicleEntity implements Car, NamedScree
 
     @Override
     protected void readCustomDataFromNbt(NbtCompound nbt) {
-        keyId = nbt.getInt("CarKeyID");
-        String engineTypeStr = nbt.getString("EngineType");
+        keyId = nbt.getInt("CarKeyID", 0);
+        String engineTypeStr = nbt.getString("EngineType", "");
         if(engineTypeStr != null && !engineTypeStr.isEmpty()) {
             try {
                 engineType = EngineType.valueOf(engineTypeStr.trim().toUpperCase());
@@ -117,9 +111,9 @@ public abstract class CarEntity extends VehicleEntity implements Car, NamedScree
             CarsAPI.LOGGER.warn("Missing EngineType, defaulting to V6");
             engineType = EngineType.V6;
         }
-        float capacity = nbt.getFloat("FuelCapacity");
-        float amount = nbt.getFloat("FuelAmount");
-        String fuelTypeStr = nbt.getString("FuelType");
+        float capacity = nbt.getFloat("FuelCapacity", 0f);
+        float amount = nbt.getFloat("FuelAmount", 0f);
+        String fuelTypeStr = nbt.getString("FuelType", "");
         CarFuelStorage.FuelTank.FuelType fuelType;
         try {
             fuelType = CarFuelStorage.FuelTank.FuelType.valueOf(fuelTypeStr.toUpperCase()); // optional: force uppercase
@@ -132,7 +126,7 @@ public abstract class CarEntity extends VehicleEntity implements Car, NamedScree
         this.getFuelStorage().setFuelAmount(amount);
 
         if (nbt.contains("CarModel")) {
-            model = nbt.getString("CarModel");
+            model = nbt.getString("CarModel", "");
         }
     }
 
@@ -314,12 +308,10 @@ public abstract class CarEntity extends VehicleEntity implements Car, NamedScree
 
     public void initPosition(double x, double y, double z) {
         this.setPosition(x, y, z);
-        this.prevX = x;
-        this.prevY = y;
-        this.prevZ = z;
+        this.lastX = x;
+        this.lastY = y;
+        this.lastZ = z;
     }
-
-
 
 //    @Nullable
 //    public static <T extends CarEntity> T create(World world, double x, double y, double z, EntityType<T> type, SpawnReason reason, ItemStack stack, @Nullable PlayerEntity player) {
@@ -327,7 +319,7 @@ public abstract class CarEntity extends VehicleEntity implements Car, NamedScree
 //        if (carEntity != null) {
 //            carEntity.initPosition(x, y, z);
 //            EntityType.copier(world, stack, player).accept(carEntity);
-//                BlockPos blockPos = carEntity.getRailOrMinecartPos();
+//                BlockPos blockPos = carEntity.getBlockPos();
 //                BlockState blockState = world.getBlockState(blockPos);
 //
 //        }

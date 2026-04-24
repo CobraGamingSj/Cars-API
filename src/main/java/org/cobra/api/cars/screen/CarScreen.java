@@ -14,7 +14,6 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import org.cobra.api.cars.CarsAPI;
 import org.cobra.api.cars.entity.CarEntity;
-import software.bernie.geckolib.object.Color;
 
 public class CarScreen extends HandledScreen<CarScreenHandler> {
     private static final Identifier TEXTURE = Identifier.of(CarsAPI.MOD_ID, "textures/gui/container/car.png");
@@ -52,8 +51,8 @@ public class CarScreen extends HandledScreen<CarScreenHandler> {
 
         entity.setYaw(yaw);
         entity.setPitch(pitch);
-        entity.prevYaw = yaw;
-        entity.prevPitch = pitch;
+        entity.lastYaw = yaw;
+        entity.lastPitch = pitch;
 
         dispatcher.setRenderShadows(false);
         dispatcher.render(carEntity, 0.0, 0.0, 0.0, 0F, matrices, immediate, 15728880);

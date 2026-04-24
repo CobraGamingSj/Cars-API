@@ -1,8 +1,6 @@
 package org.cobra.api.cars.entity;
 
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
-import net.minecraft.entity.data.DataTracker;
 import net.minecraft.item.Item;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
@@ -10,18 +8,19 @@ import org.cobra.api.cars.CarsAPI;
 import org.cobra.api.cars.item.ModItems;
 import org.cobra.api.cars.storage.CarFuelStorage;
 import software.bernie.geckolib.animatable.GeoAnimatable;
+import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.manager.AnimatableManager;
+import software.bernie.geckolib.animatable.processing.AnimationController;
 import software.bernie.geckolib.animation.Animation;
-import software.bernie.geckolib.animation.AnimationController;
 import software.bernie.geckolib.animation.RawAnimation;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-public class BMW extends CarEntity implements GeoAnimatable {
+public class BMWCarEntity extends CarEntity implements GeoEntity {
     public static final Identifier CAR_ID = Identifier.of(CarsAPI.MOD_ID, "bmw");
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
-    public BMW(EntityType<? extends CarEntity> car, World world) {
+    public BMWCarEntity(EntityType<? extends CarEntity> car, World world) {
         super(car, world, 1);
         this.carType = CarType.SPORTS;
     }
@@ -94,12 +93,12 @@ public class BMW extends CarEntity implements GeoAnimatable {
     }
 
     @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {
-        controllerRegistrar.add(new AnimationController<>(
-                this, "controller", 0, state -> {
-            return state.setAndContinue(RawAnimation.begin().then("animation.bmw.moving", Animation.LoopType.LOOP));
-        }
-        ));
+    public void registerControllers(final AnimatableManager.ControllerRegistrar controllerRegistrar) {
+//        controllerRegistrar.add(new AnimationController<GeoAnimatable>(
+//                "controller", 0, state -> {
+//            return state.setAndContinue(RawAnimation.begin().then("animation.bmw.moving", Animation.LoopType.LOOP));
+//        }
+//        ));
     }
 
     @Override
